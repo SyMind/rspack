@@ -77,7 +77,7 @@ async fn process_assets(&self, compilation: &mut Compilation) -> Result<()> {
     return Ok(());
   }
 
-  let (now_all_modules, now_runtime_modules) = collect_changed_modules(compilation)?;
+  let (mut now_all_modules, mut now_runtime_modules) = collect_changed_modules(compilation)?;
 
   let mut updated_modules: IdentifierSet = Default::default();
   let mut updated_runtime_modules: IdentifierSet = Default::default();
@@ -85,9 +85,9 @@ async fn process_assets(&self, compilation: &mut Compilation) -> Result<()> {
   let mut updated_chunks: HashMap<ChunkUkey, HashSet<String>> = Default::default();
 
   for (old_uri, (old_hash, old_module_id)) in &old_all_modules {
-    if let Some((now_hash, _)) = now_all_modules.get(old_uri) {
+    if let Some((now_hash, _)) = now_all_modules.remove(old_uri) {
       // updated
-      if now_hash != old_hash {
+      if now_hash != *old_hash {
         updated_modules.insert(*old_uri);
       }
     } else {
@@ -95,30 +95,25 @@ async fn process_assets(&self, compilation: &mut Compilation) -> Result<()> {
       completely_removed_modules.insert(old_module_id.to_string());
     }
   }
-  for identifier in now_all_modules.keys() {
-    if !old_all_modules.contains_key(identifier) {
+  for identifier in now_all_modules.into_keys() {
+    if !old_all_modules.contains_key(&identifier) {
       // added
-      updated_modules.insert(*identifier);
+      updated_modules.insert(identifier);
     }
   }
 
-  // println!(
-  //   "updated_modules: {:?}\n, remove modules {:?}",
-  //   updated_modules, completely_removed_modules
-  // );
-
   for (identifier, old_runtime_module_content) in &old_runtime_modules {
-    if let Some(new_runtime_module_content) = now_runtime_modules.get(identifier) {
+    if let Some(new_runtime_module_content) = now_runtime_modules.remove(identifier) {
       // updated
-      if new_runtime_module_content != old_runtime_module_content {
+      if new_runtime_module_content != *old_runtime_module_content {
         updated_runtime_modules.insert(*identifier);
       }
     }
   }
-  for identifier in now_runtime_modules.keys() {
-    if !old_runtime_modules.contains_key(identifier) {
+  for identifier in now_runtime_modules.into_keys() {
+    if !old_runtime_modules.contains_key(&identifier) {
       // added
-      updated_runtime_modules.insert(*identifier);
+      updated_runtime_modules.insert(identifier);
     }
   }
 
