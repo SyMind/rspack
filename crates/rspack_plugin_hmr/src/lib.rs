@@ -120,21 +120,20 @@ async fn process_assets(&self, compilation: &mut Compilation) -> Result<()> {
   // TODO: hash
   // if old.hash == now.hash { return  } else { // xxxx}
 
+  let mut id_to_chunk = HashMap::default();
+  for chunk in compilation.chunk_by_ukey.values() {
+    id_to_chunk.insert(chunk.expect_id().to_string(), chunk.ukey);
+  }
+
   for (chunk_id, old_runtime) in &old_chunks {
     let mut new_modules = vec![];
     let mut new_runtime_modules = vec![];
-    let mut chunk_id = chunk_id.to_string();
     let mut new_runtime = all_old_runtime.clone();
     let mut removed_from_runtime = all_old_runtime.clone();
-    let current_chunk = compilation
-      .chunk_by_ukey
-      .iter()
-      .find(|(_, chunk)| chunk.expect_id().eq(&chunk_id))
-      .map(|(_, chunk)| chunk);
-    let current_chunk_ukey = current_chunk.map(|c| c.ukey);
+    let current_chunk_ukey = id_to_chunk.get(chunk_id);
+    let current_chunk = current_chunk_ukey.map(|ukey| compilation.chunk_by_ukey.expect_get(ukey));
 
     if let Some(current_chunk) = current_chunk {
-      chunk_id = current_chunk.expect_id().to_string();
       new_runtime = Default::default();
       // intersectRuntime
       for old_runtime in &all_old_runtime {
@@ -258,7 +257,7 @@ async fn process_assets(&self, compilation: &mut Compilation) -> Result<()> {
         );
         if let Some(current_chunk_ukey) = current_chunk_ukey {
           updated_chunks
-            .entry(current_chunk_ukey)
+            .entry(*current_chunk_ukey)
             .or_default()
             .insert(filename.clone());
         }
