@@ -1386,7 +1386,7 @@ pub fn get_side_effects_from_package_json(
   relative_path: PathBuf,
 ) -> bool {
   match side_effects {
-    SideEffects::Bool(s) => s,
+    SideEffects::Bool(b) => b,
     SideEffects::String(s) => {
       glob_match_with_normalized_pattern(&s, &relative_path.to_string_lossy())
     }
@@ -1398,12 +1398,14 @@ pub fn get_side_effects_from_package_json(
 
 fn glob_match_with_normalized_pattern(pattern: &str, string: &str) -> bool {
   let trim_start = pattern.trim_start_matches("./");
-  let normalized_glob = if trim_start.contains('/') {
-    trim_start.to_string()
+
+  let normalized_glob = if !trim_start.contains('/') {
+    Cow::Owned(format!("**/{}", pattern))
   } else {
-    String::from("**/") + trim_start
+    Cow::Borrowed(pattern)
   };
-  glob_match::glob_match(&normalized_glob, string.trim_start_matches("./"))
+
+  glob_match::glob_match(normalized_glob.as_ref(), string.trim_start_matches("./"))
 }
 
 impl<'a> ModuleRefAnalyze<'a> {
